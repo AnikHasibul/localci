@@ -3,9 +3,7 @@ package localci
 // Write implements io.Writer
 // appends bytes to buffer
 func (ci ciObj) Write(p []byte) (n int, err error) {
-	if ci.writeToStdout {
-		ci.append(p)
-	}
+	ci.append(p)
 	return len(p), nil
 }
 

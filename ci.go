@@ -3,6 +3,7 @@ package localci
 import (
 	"flag"
 	"log"
+	"os"
 	"os/exec"
 
 	"github.com/anikhasibul/queue"
@@ -51,11 +52,20 @@ func initialize() *ciObj {
 	flag.StringVar(
 		&ci.configFile,
 		"c",
-		"config.json",
+		".lci.json",
 		"Config file.",
+	)
+	gen := flag.Bool(
+		"gen",
+		false,
+		"generates a config file. To save the config, try: $ localci -gen >.lci.json",
 	)
 	flag.Parse()
 	// get filea
+	if *gen {
+		Generate()
+		os.Exit(0)
+	}
 	ci.files = flag.Args()
 	// queue group (maximum 1 ci)
 	ci.queue = queue.New(1)
@@ -77,7 +87,7 @@ func Start() {
 		log.Fatal(ci.err)
 	}
 	// start watching
-	ci.watch()
+	go ci.watch()
 	// start listening to events
 	ci.listen()
 }

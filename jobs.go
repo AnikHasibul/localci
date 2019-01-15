@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"os/exec"
+	"os/signal"
 )
 
 // parseConfig parses the config file
@@ -38,12 +40,15 @@ func (ci *ciObj) runStages() {
 				} else {
 					ci.fail()
 					ci.msg(ci.err.Error())
-					ci.err = nil
 				}
 				if ci.writeToStdout {
 					if w := string(ci.flush()); w != "" {
 						ci.log(w)
 					}
+				}
+				if ci.err != nil {
+					ci.err = nil
+					return
 				}
 			}
 		}
@@ -60,6 +65,25 @@ func (ci *ciObj) run(args []string) {
 			ci.cmd.Process.Kill()
 		}
 	}
+	var done = make(chan bool, 1)
+	defer close(done)
+	go func() {
+		kill := make(chan os.Signal, 1)
+		signal.Notify(kill, os.Interrupt)
+		defer signal.Stop(kill)
+		select {
+		case <-kill:
+			if ci.cmd != nil {
+				if ci.cmd.Process != nil {
+					ci.cancel()
+					// nolint
+					ci.cmd.Process.Kill()
+				}
+			}
+		case <-done:
+			return
+		}
+	}()
 	// new command
 	ci.cmd = exec.Command(
 		args[0],

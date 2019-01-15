@@ -17,6 +17,11 @@ func (ci *ciObj) fail() {
 	fmt.Print(aurora.Red("FAIL"), "\n")
 }
 
+// print the cancel text
+func (ci *ciObj) cancel() {
+	fmt.Print(aurora.Red("CANCEL"), "\n")
+}
+
 // print a normal message
 func (ci *ciObj) msg(msg string) {
 	if ci.verbose {

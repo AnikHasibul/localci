@@ -1,0 +1,27 @@
+{
+  "0Build": [
+    {
+      "GoBuild": [
+        "go",
+        "build"
+      ]
+    }
+  ],
+  "1Test": [
+    {
+      "GoTest": [
+        "go",
+        "test"
+      ]
+    }
+  ],
+  "2Run": [
+    {
+      "GoRun": [
+        "go",
+        "run",
+        "."
+      ]
+    }
+  ]
+}
