@@ -17,6 +17,9 @@ func (ci *ciObj) parseConfig() {
 		ci.err = err
 		return
 	}
+	// fix #1
+	// delete the previous config
+	ci.config = make(config)
 	// parse it
 	ci.err = json.Unmarshal(c, &ci.config)
 	if err != nil {
