@@ -1,12 +1,13 @@
 package localci
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"os/signal"
+
+	yml "gopkg.in/yaml.v2"
 )
 
 // parseConfig parses the config file
@@ -19,9 +20,9 @@ func (ci *ciObj) parseConfig() {
 	}
 	// fix #1
 	// delete the previous config
-	ci.config = make(config)
+	ci.config = config{}
 	// parse it
-	ci.err = json.Unmarshal(c, &ci.config)
+	ci.err = yml.Unmarshal(c, &ci.config)
 	if err != nil {
 		return
 	}
@@ -30,12 +31,12 @@ func (ci *ciObj) parseConfig() {
 // runStages runs all stages
 func (ci *ciObj) runStages() {
 	// loop over all stages
-	for stage, execs := range ci.config {
-		ci.stageLog(stage)
+	for _, execs := range ci.config {
 		// loop over all jobs on the stages
-		for _, e := range execs {
-			for k, v := range e {
-				ci.jobLog(k)
+		for stage, e := range execs {
+			ci.stageLog(stage)
+			for _, v := range e {
+				ci.jobLog(v)
 				// run each job
 				ci.run(v)
 				if ci.err == nil {
@@ -43,11 +44,6 @@ func (ci *ciObj) runStages() {
 				} else {
 					ci.fail()
 					ci.msg(ci.err.Error())
-				}
-				if ci.writeToStdout {
-					if w := string(ci.flush()); w != "" {
-						ci.log(w)
-					}
 				}
 				if ci.err != nil {
 					ci.err = nil
@@ -59,7 +55,7 @@ func (ci *ciObj) runStages() {
 }
 
 // run runs a command
-func (ci *ciObj) run(args []string) {
+func (ci *ciObj) run(cmdLine string) {
 	// if a process exists on this pid
 	// kill it
 	if ci.cmd != nil {
@@ -89,20 +85,21 @@ func (ci *ciObj) run(args []string) {
 	}()
 	// new command
 	ci.cmd = exec.Command(
-		args[0],
-		args[1:]...,
+		"sh",
+		"-c",
+		cmdLine,
 	)
-	ci.cmd.Stdout = ci
-	ci.cmd.Stderr = ci
+	ci.cmd.Stdout = os.Stdout
+	ci.cmd.Stderr = os.Stderr
 	ci.err = ci.cmd.Run()
 
 	if ci.err != nil {
-		ci.err = fmt.Errorf("%s: %v", args[0], ci.err)
+		ci.err = fmt.Errorf("%s: %v", cmdLine, ci.err)
 		return
 	}
 
 	if !ci.cmd.ProcessState.Success() {
-		ci.err = fmt.Errorf("%s: %s", args[0], "exited with !0")
+		ci.err = fmt.Errorf("%s: %s", cmdLine, "exited with !0")
 	}
 }
 
@@ -110,11 +107,6 @@ func (ci *ciObj) run(args []string) {
 func (ci *ciObj) jobs() {
 	// release queue
 	defer ci.queue.Done()
-	// parse config
-	ci.parseConfig()
-	if ci.err != nil {
-		ci.log(ci.err.Error())
-	}
 	// run....
 	ci.runStages()
 	if ci.err != nil {

@@ -1,0 +1,9 @@
+- build:
+  - go build
+- test:
+  - go vet ./...
+  - go test -v ./...
+- prepare:
+  - "lsof -ti:6000 | xargs kill"
+- run:
+  - go run .

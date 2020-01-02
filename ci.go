@@ -11,25 +11,29 @@ import (
 
 // ciObj holds the whole ci methods
 type ciObj struct {
-	config        config
-	cmd           *exec.Cmd
-	queue         *queue.Q
-	fs            watchMap
-	err           error
-	fileTicker    chan string
-	configFile    string
-	files         []string
-	wBuff         []byte
-	verbose       bool
-	writeToStdout bool
+	config          config
+	cmd             *exec.Cmd
+	queue           *queue.Q
+	fs              watchMap
+	err             error
+	fileTicker      chan string
+	configFile      string
+	files           []string
+	wBuff           []byte
+	verbose         bool
+	writeToStdout   bool
+	killOnNewChange bool
 }
 
 type (
 	// config format
 	// map[stages][]execs
-	config map[string][]execs
-	// exec format
-	// map[title]args
+	config []execs
+	//name:
+	//	"build"
+	//jobs
+	//	- "go env"
+	//	- "go build"
 	execs map[string][]string
 )
 
@@ -52,16 +56,22 @@ func initialize() *ciObj {
 	flag.StringVar(
 		&ci.configFile,
 		"c",
-		".lci.json",
+		".lci.yml",
 		"Config file.",
 	)
 	gen := flag.Bool(
 		"gen",
 		false,
-		"generates a config file. To save the config, try: $ localci -gen >.lci.json",
+		"generates a config file. To save the config, try: $ localci -gen >.lci.yml",
+	)
+	flag.BoolVar(
+		&ci.killOnNewChange,
+		"k",
+		false,
+		"Kill current ci process if file changes when running.",
 	)
 	flag.Parse()
-	// get filea
+	// get files
 	if *gen {
 		Generate()
 		os.Exit(0)
@@ -85,6 +95,12 @@ func Start() {
 	ci.addToWatcher()
 	if ci.err != nil {
 		log.Fatal(ci.err)
+	}
+	// parse config
+	ci.parseConfig()
+	if ci.err != nil {
+		ci.log(ci.err.Error())
+		return
 	}
 	// start watching
 	go ci.watch()

@@ -34,11 +34,16 @@ func (ci *ciObj) waitForEvent() string {
 // listen listens for an event
 // calls jobs, sets queue and...
 func (ci *ciObj) listen() {
+	var e string
 	for {
-		e := ci.waitForEvent()
+		if ci.killOnNewChange && ci.cmd != nil {
+			ci.cmd.Process.Kill()
+			ci.cancel()
+		}
 		ci.queue.Add()
 		ci.sessionLog()
 		ci.vLog(e)
 		go ci.jobs()
+		e = ci.waitForEvent()
 	}
 }
